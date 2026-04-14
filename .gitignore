@@ -1,0 +1,48 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+
+# Private keys and certificates (NEVER commit)
+*.key
+*.pem
+*.p12
+*.crt
+wg0.conf
+zerotier-one/
+
+# Environment files with credentials
+.env
+.env.local
+.env.*.local
+
+# WireGuard real configs (only sanitized versions in /vpn/)
+wg*.conf
+
+# Docker volumes and local overrides
+docker-compose.override.yml
+.docker/
+
+# Compiled binaries
+*.exe
+*.out
+*.bin
+
+# macOS artifacts
+.DS_Store
+.AppleDouble
+.LSOverride
+__MACOSX/
+
+# Editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# iperf3 output files
+iperf_*.json
+iperf_*.txt
