@@ -1,0 +1,72 @@
+# heartbeat-iot — docker-compose for PEER hosts (edge + sensors only)
+# Set COORDINATOR_ADDR to the coordinator's ZeroTier IP before running.
+# Usage: COORDINATOR_ADDR=http://10.147.17.X:9000 docker-compose -f docker-compose.peer.yml up -d
+
+version: "3.9"
+
+networks:
+  heartbeat-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1420"
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          gateway: 172.30.0.1
+
+services:
+
+  edge-2:
+    build:
+      context: .
+      dockerfile: docker/edge/Dockerfile
+    container_name: heartbeat-edge-2
+    environment:
+      - RUST_LOG=info
+      - EDGE_ID=edge-2
+      - COORDINATOR_ADDR=${COORDINATOR_ADDR:-http://10.147.17.X:9000}
+      - PORT=8080
+      - ANOMALY_THRESHOLD=38.0
+      - RECONNECT_BASE_MS=500
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.30.0.11
+    restart: unless-stopped
+
+  sensor-3:
+    build:
+      context: .
+      dockerfile: docker/sensor/Dockerfile
+    container_name: heartbeat-sensor-3
+    environment:
+      - RUST_LOG=info
+      - SENSOR_ID=sensor-3
+      - EDGE_ADDR=http://edge-2:8080
+      - PUBLISH_INTERVAL_MS=500
+      - TEMP_MIN=15.0
+      - TEMP_MAX=40.0
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.30.0.12
+    depends_on:
+      - edge-2
+    restart: unless-stopped
+
+  sensor-4:
+    build:
+      context: .
+      dockerfile: docker/sensor/Dockerfile
+    container_name: heartbeat-sensor-4
+    environment:
+      - RUST_LOG=info
+      - SENSOR_ID=sensor-4
+      - EDGE_ADDR=http://edge-2:8080
+      - PUBLISH_INTERVAL_MS=600
+      - TEMP_MIN=15.0
+      - TEMP_MAX=40.0
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.30.0.13
+    depends_on:
+      - edge-2
+    restart: unless-stopped

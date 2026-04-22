@@ -1,0 +1,93 @@
+# heartbeat-iot — docker-compose for the HUB host (coordinator + local edge + sensors)
+# On peer hosts, set COORDINATOR_ADDR to the coordinator's ZeroTier IP.
+# MTU 1420 matches ZeroTier (same as P1).
+
+version: "3.9"
+
+networks:
+  heartbeat-net:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1420"
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+          gateway: 172.28.0.1
+
+services:
+
+  # ── Coordinator (hub host only) ─────────────────────────────────────────────
+  coordinator:
+    build:
+      context: .
+      dockerfile: docker/coordinator/Dockerfile
+    container_name: heartbeat-coordinator
+    environment:
+      - RUST_LOG=info
+      - BIND_ADDR=0.0.0.0:9000
+      - ANOMALY_THRESHOLD=38.0
+    ports:
+      - "9000:9000"   # gRPC/TCP reports + HTTP dashboard
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.28.0.10
+    restart: unless-stopped
+
+  # ── Edge node (one per host) ────────────────────────────────────────────────
+  edge-1:
+    build:
+      context: .
+      dockerfile: docker/edge/Dockerfile
+    container_name: heartbeat-edge-1
+    environment:
+      - RUST_LOG=info
+      - EDGE_ID=edge-1
+      - COORDINATOR_ADDR=http://coordinator:9000
+      - PORT=8080
+      - ANOMALY_THRESHOLD=38.0
+      - RECONNECT_BASE_MS=500
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.28.0.11
+    depends_on:
+      - coordinator
+    restart: unless-stopped
+
+  # ── Sensors (2 per host minimum) ────────────────────────────────────────────
+  sensor-1:
+    build:
+      context: .
+      dockerfile: docker/sensor/Dockerfile
+    container_name: heartbeat-sensor-1
+    environment:
+      - RUST_LOG=info
+      - SENSOR_ID=sensor-1
+      - EDGE_ADDR=http://edge-1:8080
+      - PUBLISH_INTERVAL_MS=500
+      - TEMP_MIN=15.0
+      - TEMP_MAX=40.0
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.28.0.12
+    depends_on:
+      - edge-1
+    restart: unless-stopped
+
+  sensor-2:
+    build:
+      context: .
+      dockerfile: docker/sensor/Dockerfile
+    container_name: heartbeat-sensor-2
+    environment:
+      - RUST_LOG=info
+      - SENSOR_ID=sensor-2
+      - EDGE_ADDR=http://edge-1:8080
+      - PUBLISH_INTERVAL_MS=750
+      - TEMP_MIN=15.0
+      - TEMP_MAX=40.0
+    networks:
+      heartbeat-net:
+        ipv4_address: 172.28.0.13
+    depends_on:
+      - edge-1
+    restart: unless-stopped
