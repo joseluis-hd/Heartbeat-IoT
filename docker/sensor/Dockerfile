@@ -1,5 +1,5 @@
 # Stage 1: Build — reused from P1 multi-stage pattern
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:1.86-slim-bookworm AS builder
 
 WORKDIR /build
 
